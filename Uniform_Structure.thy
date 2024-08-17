@@ -3,12 +3,13 @@ theory Uniform_Structure
 begin
 
 definition uniformity_on :: "'a set \<Rightarrow> (('a \<times> 'a) set \<Rightarrow> bool) \<Rightarrow> bool" where
-"uniformity_on X \<Phi> \<longleftrightarrow> 
-  (\<exists>E. \<Phi> E) \<and> 
-  (\<forall>E. \<Phi> E \<longrightarrow> E \<subseteq> X \<times> X \<and> Id_on X \<subseteq> E \<and> \<Phi> (E\<inverse>) \<and> (\<exists>F. \<Phi> F \<and> F O F \<subseteq> E) \<and> (\<forall>F. E \<subseteq> F \<and> F \<subseteq> X \<times> X \<longrightarrow> \<Phi> F)) \<and>
-  (\<forall>E F. \<Phi> E \<longrightarrow> \<Phi> F \<longrightarrow> \<Phi> (E \<inter> F))"
+"uniformity_on X \<E> \<longleftrightarrow> 
+  (\<exists>E. \<E> E) \<and> 
+  (\<forall>E. \<E> E \<longrightarrow> E \<subseteq> X \<times> X \<and> Id_on X \<subseteq> E \<and> \<E> (E\<inverse>) \<and> (\<exists>F. \<E> F \<and> F O F \<subseteq> E) \<and> 
+    (\<forall>F. E \<subseteq> F \<and> F \<subseteq> X \<times> X \<longrightarrow> \<E> F)) \<and>
+  (\<forall>E F. \<E> E \<longrightarrow> \<E> F \<longrightarrow> \<E> (E \<inter> F))"
 
-typedef 'a uniformity = "{(X :: 'a set, \<Phi>). uniformity_on X \<Phi>}"
+typedef 'a uniformity = "{(X :: 'a set, \<E>). uniformity_on X \<E>}"
   morphisms uniformity_rep uniformity
 proof -
   have "uniformity_on UNIV (\<lambda>E. E = UNIV \<times> UNIV)" 
@@ -17,16 +18,16 @@ proof -
 qed
 
 definition uspace :: "'a uniformity \<Rightarrow> 'a set" where
-"uspace \<Phi> = (let (X, \<Phi>) = uniformity_rep \<Phi> in X)"
+"uspace \<Phi> = (let (X, \<E>) = uniformity_rep \<Phi> in X)"
 
 definition entourage_in :: "'a uniformity \<Rightarrow> ('a \<times> 'a) set \<Rightarrow> bool" where
-"entourage_in \<Phi> = (let (X, \<Phi>) = uniformity_rep \<Phi> in \<Phi>)"
+"entourage_in \<Phi> = (let (X, \<E>) = uniformity_rep \<Phi> in \<E>)"
 
 lemma uniformity_inverse':
-  assumes "uniformity_on X \<Phi>"
-  shows "uspace (uniformity (X, \<Phi>)) = X \<and> entourage_in (uniformity (X, \<Phi>)) = \<Phi>"
+  assumes "uniformity_on X \<E>"
+  shows "uspace (uniformity (X, \<E>)) = X \<and> entourage_in (uniformity (X, \<E>)) = \<E>"
 proof -
-  from assms have "uniformity_rep (uniformity (X, \<Phi>)) = (X, \<Phi>)" 
+  from assms have "uniformity_rep (uniformity (X, \<E>)) = (X, \<E>)" 
     using uniformity_inverse by blast
   then show ?thesis by (auto simp: prod.splits uspace_def entourage_in_def)
 qed
