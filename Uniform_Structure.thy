@@ -1,6 +1,16 @@
+\<^marker>\<open>creator "Niklas Krofta"\<close>
+section \<open>Uniform spaces\<close>
 theory Uniform_Structure
   imports "HOL-Analysis.Abstract_Topology" "HOL-Analysis.Abstract_Metric_Spaces"
 begin
+
+paragraph \<open>Summary\<close>
+text \<open>
+  This section introduces a set-based notion of uniformities and connects it to the
+  @{class "uniform_space"} type class.
+\<close>
+
+subsection \<open>Definitions and basic results\<close>
 
 definition uniformity_on :: "'a set \<Rightarrow> (('a \<times> 'a) set \<Rightarrow> bool) \<Rightarrow> bool" where
 "uniformity_on X \<E> \<longleftrightarrow> 
@@ -23,7 +33,7 @@ definition uspace :: "'a uniformity \<Rightarrow> 'a set" where
 definition entourage_in :: "'a uniformity \<Rightarrow> ('a \<times> 'a) set \<Rightarrow> bool" where
 "entourage_in \<Phi> = (let (X, \<E>) = uniformity_rep \<Phi> in \<E>)"
 
-lemma uniformity_inverse':
+lemma uniformity_inverse'[simp]:
   assumes "uniformity_on X \<E>"
   shows "uspace (uniformity (X, \<E>)) = X \<and> entourage_in (uniformity (X, \<E>)) = \<E>"
 proof -
@@ -36,7 +46,7 @@ lemma uniformity_entourages:
   shows "uniformity_on (uspace \<Phi>) (entourage_in \<Phi>)"
   by (metis Product_Type.Collect_case_prodD entourage_in_def split_beta uspace_def uniformity_rep)
 
-lemma entourages_exist[simp]: "\<exists>E. entourage_in \<Phi> E"
+lemma entourages_exist: "\<exists>E. entourage_in \<Phi> E"
   using uniformity_entourages unfolding uniformity_on_def by blast
 
 lemma entourage_in_space[elim]: "entourage_in \<Phi> E \<Longrightarrow> E \<subseteq> uspace \<Phi> \<times> uspace \<Phi>"
@@ -49,10 +59,10 @@ lemma entourage_superset[intro]:
 lemma entourage_intersection[intro]: "entourage_in \<Phi> E \<Longrightarrow> entourage_in \<Phi> F \<Longrightarrow> entourage_in \<Phi> (E \<inter> F)"
   using uniformity_entourages unfolding uniformity_on_def by metis
 
-lemma entourage_converse[intro]: "entourage_in \<Phi> E \<Longrightarrow>  entourage_in \<Phi> (E\<inverse>)"
+lemma entourage_converse[intro]: "entourage_in \<Phi> E \<Longrightarrow> entourage_in \<Phi> (E\<inverse>)"
   using uniformity_entourages unfolding uniformity_on_def by fast
 
-lemma entourage_diagonal[elim]:
+lemma entourage_diagonal[dest]:
   assumes entourage: "entourage_in \<Phi> E" and in_space: "x \<in> uspace \<Phi>"
   shows "(x,x) \<in> E"
 proof -
@@ -61,7 +71,7 @@ proof -
   then show ?thesis using Id_onI[OF in_space] by blast
 qed
 
-lemma smaller_entourage[elim]:
+lemma smaller_entourage:
   assumes entourage: "entourage_in \<Phi> E"
   shows "\<exists>F. entourage_in \<Phi> F \<and> (\<forall>x y z. (x,y) \<in> F \<and> (y,z) \<in> F \<longrightarrow> (x,z) \<in> E)"
 proof -
@@ -77,7 +87,7 @@ lemma entire_space_entourage: "entourage_in \<Phi> (uspace \<Phi> \<times> uspac
 definition utopology :: "'a uniformity \<Rightarrow> 'a topology" where
 "utopology \<Phi> = topology (\<lambda>U. U \<subseteq> uspace \<Phi> \<and> (\<forall>x\<in>U. \<exists>E. entourage_in \<Phi> E \<and> E``{x} \<subseteq> U))"
 
-lemma openin_utopology:
+lemma openin_utopology [iff]:
   fixes \<Phi> :: "'a uniformity"
   defines "uopen U \<equiv> U \<subseteq> uspace \<Phi> \<and> (\<forall>x\<in>U. \<exists>E. entourage_in \<Phi> E \<and> E``{x} \<subseteq> U)"
   shows "openin (utopology \<Phi>) = uopen"
@@ -88,7 +98,7 @@ proof -
     proof -
       from hUV hx obtain E\<^sub>1 E\<^sub>2 where 
         "entourage_in \<Phi> E\<^sub>1 \<and> entourage_in \<Phi> E\<^sub>2 \<and> E\<^sub>1``{x} \<subseteq> U \<and> E\<^sub>2``{x} \<subseteq> V" unfolding uopen_def by blast
-      then have "entourage_in \<Phi> (E\<^sub>1 \<inter> E\<^sub>2) \<and> (E\<^sub>1 \<inter> E\<^sub>2)``{x} \<subseteq> U \<inter> V" by fast
+      then have "entourage_in \<Phi> (E\<^sub>1 \<inter> E\<^sub>2) \<and> (E\<^sub>1 \<inter> E\<^sub>2)``{x} \<subseteq> U \<inter> V" by blast
       then show ?thesis by fast
     qed
     then show ?thesis using le_infI1 hUV unfolding uopen_def by auto
@@ -124,10 +134,10 @@ definition ucontinuous :: "'a uniformity \<Rightarrow> 'b uniformity \<Rightarro
   f \<in> uspace \<Phi> \<rightarrow> uspace \<Psi> \<and>
   (\<forall>E. entourage_in \<Psi> E \<longrightarrow> entourage_in \<Phi> {(x, y) \<in> uspace \<Phi> \<times> uspace \<Phi>. (f x, f y) \<in> E})"
 
-lemma ucontinuous_image_subset: "ucontinuous \<Phi> \<Psi> f \<Longrightarrow> f`(uspace \<Phi>) \<subseteq> uspace \<Psi>"
+lemma ucontinuous_image_subset [dest]: "ucontinuous \<Phi> \<Psi> f \<Longrightarrow> f`(uspace \<Phi>) \<subseteq> uspace \<Psi>"
   unfolding ucontinuous_def by blast
 
-lemma entourage_preimage_ucontinuous: 
+lemma entourage_preimage_ucontinuous [dest]: 
   assumes "ucontinuous \<Phi> \<Psi> f" and "entourage_in \<Psi> E" 
   shows "entourage_in \<Phi> {(x, y) \<in> uspace \<Phi> \<times> uspace \<Phi>. (f x, f y) \<in> E}"
   using assms unfolding ucontinuous_def by blast
@@ -154,6 +164,8 @@ next
   qed
   then show "openin (utopology \<Phi>) ?V" unfolding openin_utopology by force
 qed
+
+subsection \<open>Metric spaces as uniform spaces\<close>
 
 context Metric_space 
 begin 
@@ -207,7 +219,7 @@ proof -
     unfolding muniformity_def using uniformity_inverse' by auto
 qed
 
-lemma uniformity_induces_mtopology: "utopology muniformity = mtopology"
+lemma uniformity_induces_mtopology [simp]: "utopology muniformity = mtopology"
 proof -
   have mentourage_image: "mball x \<epsilon> = (mentourage \<epsilon>)``{x}" for x \<epsilon> unfolding mball_def by auto
   have "openin (utopology muniformity) U \<longleftrightarrow> openin mtopology U" for U
@@ -232,6 +244,8 @@ proof -
   qed
   then show ?thesis using topology_eq by blast
 qed
+
+subsection \<open>Connection to type class\<close>
 
 end
 
@@ -279,7 +293,7 @@ lemma uniformity_rep_uniformity_of_space:
   unfolding uniformity_of_space_def using uniformity_on_uniformity_of_space_aux
   by (intro uniformity_inverse) auto
 
-lemma uspace_uniformity_space:
+lemma uspace_uniformity_space [simp, iff]:
   "uspace uniformity_of_space = UNIV"
   unfolding uspace_def uniformity_rep_uniformity_of_space by simp
 

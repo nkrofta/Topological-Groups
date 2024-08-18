@@ -1,9 +1,20 @@
+\<^marker>\<open>creator "Niklas Krofta"\<close>
+section \<open>Matrix groups\<close>
 theory Matrix_Group
   imports 
     "Topological_Group" 
     "Topological_Group_Examples"
     "HOL-Analysis.Determinants"
 begin
+
+paragraph \<open>Summary\<close>
+text \<open>
+  In this section we define the general linear group and some of its subgroups.
+  We also introduce topologies on vector types and use them to prove the aforementioned groups
+  to be topological groups.
+\<close>
+
+subsection \<open>Topologies on vector types\<close>
 
 definition vec_topology :: "'a topology \<Rightarrow> ('a^'n) topology" where 
 "vec_topology T = quot_topology (product_topology (\<lambda>i. T) UNIV) vec_lambda"
@@ -135,6 +146,19 @@ lemma matrix_components_continuous_imp_continuous:
   shows "continuous_map X (matrix_topology T) f"
   unfolding matrix_topology_def using vec_components_continuous_imp_continuous assms by metis
 
+subsection \<open>The general linear group as a topological group\<close>
+
+definition GL :: "(('a :: field)^'n^'n) monoid" where
+"GL = \<lparr>carrier = {A. invertible A}, monoid.mult = (**), one = mat 1\<rparr>"
+
+definition GL_topology :: "(real^'n^'n) topology" where
+"GL_topology = subtopology euclidean (carrier GL)"
+
+lemma topspace_GL: "topspace GL_topology = {A. invertible A}"
+  unfolding GL_topology_def topspace_subtopology GL_def by simp
+
+subsubsection \<open>Continuity of matrix operations\<close>
+
 lemma det_continuous:
   defines "T :: (real^'n^'n) topology \<equiv> euclidean"
   shows "continuous_map T euclideanreal det"
@@ -185,14 +209,17 @@ proof -
     unfolding T3_def matrix_topology_euclidean[symmetric] by (simp add: case_prod_beta')
 qed
 
-definition GL :: "(('a :: field)^'n^'n) monoid" where
-"GL = \<lparr>carrier = {A. invertible A}, monoid.mult = (**), one = mat 1\<rparr>"
+lemma transpose_continuous:
+  shows "continuous_map (euclidean :: (('a :: topological_space)^'n^'m) topology) euclidean transpose"
+proof -
+  have "continuous_map euclidean euclidean (\<lambda>A. (transpose A) $ i $ j)" for i :: 'n and j :: 'm
+    unfolding transpose_def matrix_topology_euclidean[symmetric] 
+    using matrix_projection_continuous[of euclidean j i] by fastforce
+  from matrix_components_continuous_imp_continuous[OF this] show ?thesis 
+    unfolding matrix_topology_euclidean by blast
+qed
 
-definition GL_topology :: "(real^'n^'n) topology" where
-"GL_topology = subtopology euclidean (carrier GL)"
-
-lemma topspace_GL: "topspace GL_topology = {A. invertible A}"
-  unfolding GL_topology_def topspace_subtopology GL_def by simp
+subsubsection \<open>Continuity of matrix inversion\<close>
 
 lemma matrix_mul_columns:
   fixes A :: "('a :: semiring_1)^'n^'m" and B :: "'a^'k^'n"
@@ -234,7 +261,7 @@ proof -
   then show ?thesis using assms by (metis nonzero_mult_div_cancel_left)
 qed
 
-(* See proposition "cramer" from HOL-Analysis.Determinants *)
+text \<open>See proposition "cramer" from HOL-Analysis.Determinants\<close>
 definition cramer_inv :: "('a :: field)^'n^'n \<Rightarrow> 'a^'n^'n" where 
 "cramer_inv A = (\<chi> i j. det(\<chi> k l. if l = i then (axis j 1) $ k else A$k$l) / det A)"
 
@@ -300,15 +327,7 @@ proof -
   ultimately show ?thesis unfolding GL_topology_def Pi_def image_def using continuous_map_into_subtopology by auto
 qed
 
-lemma transpose_continuous:
-  shows "continuous_map (euclidean :: (('a :: topological_space)^'n^'m) topology) euclidean transpose"
-proof -
-  have "continuous_map euclidean euclidean (\<lambda>A. (transpose A) $ i $ j)" for i :: 'n and j :: 'm
-    unfolding transpose_def matrix_topology_euclidean[symmetric] 
-    using matrix_projection_continuous[of euclidean j i] by fastforce
-  from matrix_components_continuous_imp_continuous[OF this] show ?thesis 
-    unfolding matrix_topology_euclidean by blast
-qed
+subsubsection \<open>The general linear group is topological\<close>
 
 lemma
   GL_group: "group GL" and 
@@ -350,6 +369,8 @@ proof -
     using group_is_space[symmetric] invertible_det_nz unfolding topspace_GL by blast
   ultimately show "openin (euclidean :: (real^'n^'n) topology) (carrier GL)" by fastforce
 qed
+
+subsection \<open>Subgroups of the general linear group\<close>
 
 definition SL :: "(('a :: field)^'n^'n) monoid" where
 "SL = GL \<lparr>carrier := {A. det A = 1}\<rparr>"

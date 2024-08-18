@@ -1,3 +1,5 @@
+\<^marker>\<open>creator "Niklas Krofta"\<close>
+section \<open>General theory of Topological Groups\<close>
 theory Topological_Group
   imports 
     "HOL-Algebra.Group" 
@@ -8,6 +10,16 @@ theory Topological_Group
     "HOL-Analysis.Abstract_Metric_Spaces"
      Uniform_Structure 
 begin
+
+paragraph \<open>Summary\<close>
+text \<open>
+  In this section we define topological groups and prove basic results about them.
+  We also introduce the left and right uniform structures of topological groups and
+  prove the Birkhoff-Kakutani theorem.
+\<close>
+
+subsection \<open>Auxiliary definitions and results\<close>
+subsubsection \<open>Miscellaneous\<close>
 
 lemma connected_components_homeo:
   assumes homeo: "homeomorphic_map T\<^sub>1 T\<^sub>2 \<phi>" and in_space: "x \<in> topspace T\<^sub>1"
@@ -28,6 +40,50 @@ next
   then show "?Z T\<^sub>2 (\<phi> x) \<subseteq> \<phi>`(?Z T\<^sub>1 x)"
     by (smt (verit, del_insts) \<psi>_inv connected_component_of_subset_topspace image_subset_iff in_space subsetD subsetI)
 qed
+
+lemma open_map_prod_top:
+  assumes "open_map T\<^sub>1 T\<^sub>3 f" and "open_map T\<^sub>2 T\<^sub>4 g"
+  shows "open_map (prod_topology T\<^sub>1 T\<^sub>2) (prod_topology T\<^sub>3 T\<^sub>4) (\<lambda>(x, y). (f x, g y))"
+proof (unfold open_map_def, standard, standard)
+  let ?p = "\<lambda>(x, y). (f x, g y)"
+  fix U assume "openin (prod_topology T\<^sub>1 T\<^sub>2) U"
+  then obtain \<U> where h\<U>: "\<U> \<subseteq> {V \<times> W | V W. openin T\<^sub>1 V \<and> openin T\<^sub>2 W} \<and> \<Union> \<U> = U"
+    unfolding openin_prod_topology union_of_def using arbitrary_def by auto
+  then have "?p`U = \<Union> {?p`VW | VW. VW \<in> \<U>}" by blast
+  then have "?p`U = \<Union> {?p`(V \<times> W) | V W. V \<times> W \<in> \<U> \<and> openin T\<^sub>1 V \<and> openin T\<^sub>2 W}" 
+    using h\<U> by blast
+  moreover have "?p`(V \<times> W) = (f`V) \<times> (g`W)" for V W by fast
+  ultimately have "?p`U = \<Union> {(f`V) \<times> (g`W) | V W. V \<times> W \<in> \<U> \<and> openin T\<^sub>1 V \<and> openin T\<^sub>2 W}" by presburger
+  moreover have "openin (prod_topology T\<^sub>3 T\<^sub>4) ((f`V) \<times> (g`W))" if "openin T\<^sub>1 V \<and> openin T\<^sub>2 W" for V W
+    using openin_prod_Times_iff assms that open_map_def by metis
+  ultimately show "openin (prod_topology T\<^sub>3 T\<^sub>4) (?p`U)" by fastforce
+qed
+
+lemma injective_quotient_map_homeo:
+  assumes "quotient_map T1 T2 q" and inj: "inj_on q (topspace T1)"
+  shows "homeomorphic_map T1 T2 q" using assms
+    unfolding homeomorphic_eq_everything_map injective_quotient_map[OF inj] by fast
+
+lemma (in group) subgroupI_alt:
+  assumes subset: "H \<subseteq> carrier G" and nonempty: "H \<noteq> {}" and 
+    closed: "\<And>\<sigma> \<tau>. \<sigma> \<in> H \<and> \<tau> \<in> H \<Longrightarrow> \<sigma> \<otimes> inv \<tau> \<in> H"
+  shows "subgroup H G"
+proof -
+  from nonempty obtain \<eta> where "\<eta> \<in> H" by blast
+  then have "\<one> \<in> H" using closed[of \<eta> \<eta>] subset r_inv by fastforce
+  then have closed_inv: "inv \<sigma> \<in> H" if "\<sigma> \<in> H" for \<sigma>
+    using closed[of \<one> \<sigma>] r_inv r_one subset that by force
+  then have "\<sigma> \<otimes> \<tau> \<in> H" if "\<sigma> \<in> H \<and> \<tau> \<in> H" for \<sigma> \<tau>
+    using closed[of \<sigma> "inv \<tau>"] inv_inv subset subset_iff that by auto
+  then show ?thesis using assms closed_inv by (auto intro: subgroupI)
+qed
+
+lemma subgroup_intersection: 
+  assumes "subgroup H G" and "subgroup H' G"
+  shows "subgroup (H \<inter> H') G"
+  using assms unfolding subgroup_def by force
+
+subsubsection \<open>Quotient topology\<close>
 
 definition quot_topology :: "'a topology \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> 'b topology" where
 "quot_topology T q = topology (\<lambda>U. U \<subseteq> q`(topspace T) \<and> openin T {x \<in> topspace T. q x \<in> U})"
@@ -67,73 +123,36 @@ next
     using quot_topology_open by (metis (mono_tags, lifting) openin_topspace order_trans)
 qed
 
-corollary topspace_quot_topology: "topspace (quot_topology T q) = q`(topspace T)"
+corollary topspace_quot_topology [simp]: "topspace (quot_topology T q) = q`(topspace T)"
   using projection_quotient_map quotient_imp_surjective_map by metis
 
 corollary projection_continuous: "continuous_map T (quot_topology T q) q"
   using projection_quotient_map quotient_imp_continuous_map by fast
 
-lemma injective_quotient_map_homeo:
-  assumes "quotient_map T1 T2 q" and inj: "inj_on q (topspace T1)"
-  shows "homeomorphic_map T1 T2 q" using assms
-    unfolding homeomorphic_eq_everything_map injective_quotient_map[OF inj] by fast
-
-lemma open_map_prod_top:
-  assumes "open_map T\<^sub>1 T\<^sub>3 f" and "open_map T\<^sub>2 T\<^sub>4 g"
-  shows "open_map (prod_topology T\<^sub>1 T\<^sub>2) (prod_topology T\<^sub>3 T\<^sub>4) (\<lambda>(x, y). (f x, g y))"
-proof (unfold open_map_def, standard, standard)
-  let ?p = "\<lambda>(x, y). (f x, g y)"
-  fix U assume "openin (prod_topology T\<^sub>1 T\<^sub>2) U"
-  then obtain \<U> where h\<U>: "\<U> \<subseteq> {V \<times> W | V W. openin T\<^sub>1 V \<and> openin T\<^sub>2 W} \<and> \<Union> \<U> = U"
-    unfolding openin_prod_topology union_of_def using arbitrary_def by auto
-  then have "?p`U = \<Union> {?p`VW | VW. VW \<in> \<U>}" by blast
-  then have "?p`U = \<Union> {?p`(V \<times> W) | V W. V \<times> W \<in> \<U> \<and> openin T\<^sub>1 V \<and> openin T\<^sub>2 W}" 
-    using h\<U> by blast
-  moreover have "?p`(V \<times> W) = (f`V) \<times> (g`W)" for V W by fast
-  ultimately have "?p`U = \<Union> {(f`V) \<times> (g`W) | V W. V \<times> W \<in> \<U> \<and> openin T\<^sub>1 V \<and> openin T\<^sub>2 W}" by presburger
-  moreover have "openin (prod_topology T\<^sub>3 T\<^sub>4) ((f`V) \<times> (g`W))" if "openin T\<^sub>1 V \<and> openin T\<^sub>2 W" for V W
-    using openin_prod_Times_iff assms that open_map_def by metis
-  ultimately show "openin (prod_topology T\<^sub>3 T\<^sub>4) (?p`U)" by fastforce
-qed
-
-lemma (in group) subgroupI_alt:
-  assumes subset: "H \<subseteq> carrier G" and nonempty: "H \<noteq> {}" and 
-    closed: "\<And>\<sigma> \<tau>. \<sigma> \<in> H \<and> \<tau> \<in> H \<Longrightarrow> \<sigma> \<otimes> inv \<tau> \<in> H"
-  shows "subgroup H G"
-proof -
-  from nonempty obtain \<eta> where "\<eta> \<in> H" by blast
-  then have "\<one> \<in> H" using closed[of \<eta> \<eta>] subset r_inv by fastforce
-  then have closed_inv: "inv \<sigma> \<in> H" if "\<sigma> \<in> H" for \<sigma>
-    using closed[of \<one> \<sigma>] r_inv r_one subset that by force
-  then have "\<sigma> \<otimes> \<tau> \<in> H" if "\<sigma> \<in> H \<and> \<tau> \<in> H" for \<sigma> \<tau>
-    using closed[of \<sigma> "inv \<tau>"] inv_inv subset subset_iff that by auto
-  then show ?thesis using assms closed_inv by (auto intro: subgroupI)
-qed
-
-lemma subgroup_intersection: 
-  assumes "subgroup H G" and "subgroup H' G"
-  shows "subgroup (H \<inter> H') G"
-  using assms unfolding subgroup_def by force
+subsection \<open>Definition and basic results\<close>
 
 locale topological_group = group +
   fixes T :: "'g topology"
-  assumes group_is_space: "topspace T = carrier G"
+  assumes group_is_space [simp]: "topspace T = carrier G"
   assumes inv_continuous: "continuous_map T T (\<lambda>\<sigma>. inv \<sigma>)"
   assumes mul_continuous: "continuous_map (prod_topology T T) T (\<lambda>(\<sigma>,\<tau>). \<sigma>\<otimes>\<tau>)"
 begin
 
-lemma translations_continuous[intro]:
+lemma in_space_iff_in_group [iff]: "\<sigma> \<in> topspace T \<longleftrightarrow> \<sigma> \<in> carrier G" 
+  by auto
+
+lemma translations_continuous [intro]:
   assumes in_group: "\<sigma> \<in> carrier G"
   shows "continuous_map T T (\<lambda>\<tau>. \<sigma>\<otimes>\<tau>)" and "continuous_map T T (\<lambda>\<tau>. \<tau>\<otimes>\<sigma>)"
 proof -
   have "continuous_map T (prod_topology T T) (\<lambda>\<tau>. (\<sigma>,\<tau>))"
-    by (auto intro: continuous_map_pairedI simp: group_is_space in_group)
+    by (auto intro: continuous_map_pairedI simp: in_group)
   moreover have "(\<lambda>\<tau>. \<sigma>\<otimes>\<tau>) = (\<lambda>(\<sigma>,\<tau>). \<sigma>\<otimes>\<tau>) \<circ> (\<lambda>\<tau>. (\<sigma>,\<tau>))" by auto
   ultimately show "continuous_map T T (\<lambda>\<tau>. \<sigma>\<otimes>\<tau>)"
     using mul_continuous continuous_map_compose by metis
 next
   have "continuous_map T (prod_topology T T) (\<lambda>\<tau>. (\<tau>,\<sigma>))"
-    by (auto intro: continuous_map_pairedI simp: group_is_space in_group)
+    by (auto intro: continuous_map_pairedI simp: in_group)
   moreover have "(\<lambda>\<tau>. \<tau>\<otimes>\<sigma>) = (\<lambda>(\<sigma>,\<tau>). \<sigma>\<otimes>\<tau>) \<circ> (\<lambda>\<tau>. (\<tau>,\<sigma>))" by auto
   ultimately show "continuous_map T T (\<lambda>\<tau>. \<tau>\<otimes>\<sigma>)"
     using mul_continuous continuous_map_compose by metis
@@ -143,8 +162,7 @@ lemma translations_homeos:
   assumes in_group: "\<sigma> \<in> carrier G"
   shows "homeomorphic_map T T (\<lambda>\<tau>. \<sigma>\<otimes>\<tau>)" and "homeomorphic_map T T (\<lambda>\<tau>. \<tau>\<otimes>\<sigma>)"
 proof -
-  have "\<forall>\<tau>\<in>topspace T. inv \<sigma> \<otimes> (\<sigma> \<otimes> \<tau>) = \<tau>"
-    by (simp add: group.inv_solve_left' group_is_space in_group)
+  have "\<forall>\<tau>\<in>topspace T. inv \<sigma> \<otimes> (\<sigma> \<otimes> \<tau>) = \<tau>" by (simp add: group.inv_solve_left' in_group)
   moreover have "\<forall>\<tau>\<in>topspace T. \<sigma> \<otimes> (inv \<sigma> \<otimes> \<tau>) = \<tau>"
     by (metis group_is_space in_group inv_closed l_one m_assoc r_inv)
   ultimately have "homeomorphic_maps T T (\<lambda>\<tau>. \<sigma>\<otimes>\<tau>) (\<lambda>\<tau>. (inv \<sigma>)\<otimes>\<tau>)"
@@ -152,9 +170,8 @@ proof -
   then show "homeomorphic_map T T (\<lambda>\<tau>. \<sigma>\<otimes>\<tau>)" using homeomorphic_maps_map by blast
 next
   have "\<forall>\<tau>\<in>topspace T. \<tau> \<otimes> \<sigma> \<otimes> inv \<sigma> = \<tau>"
-    by (simp add: group.inv_solve_right' group_is_space in_group)
-  moreover have "\<forall>\<tau>\<in>topspace T. \<tau> \<otimes> inv \<sigma> \<otimes> \<sigma> = \<tau>"
-    by (simp add: group_is_space in_group m_assoc)
+    by (simp add: group.inv_solve_right' in_group)
+  moreover have "\<forall>\<tau>\<in>topspace T. \<tau> \<otimes> inv \<sigma> \<otimes> \<sigma> = \<tau>" by (simp add: in_group m_assoc)
   ultimately have "homeomorphic_maps T T (\<lambda>\<tau>. \<tau>\<otimes>\<sigma>) (\<lambda>\<tau>. \<tau>\<otimes>(inv \<sigma>))"
     using homeomorphic_maps_def in_group by blast
   then show "homeomorphic_map T T (\<lambda>\<tau>. \<tau>\<otimes>\<sigma>)" using homeomorphic_maps_map by blast
@@ -203,7 +220,9 @@ next
 qed
 
 lemma inverse_homeo: "homeomorphic_map T T (\<lambda>\<sigma>. inv \<sigma>)"
-  using homeomorphic_map_involution[OF inv_continuous] group_is_space by auto
+  using homeomorphic_map_involution[OF inv_continuous] by auto
+
+subsection \<open>Subspaces and quotient spaces\<close>
 
 abbreviation connected_component_1 :: "'g set" where
 "connected_component_1 \<equiv> connected_component_of_set T \<one>"
@@ -213,10 +232,10 @@ lemma connected_component_1_props:
 proof -
   let ?Z = "connected_component_of_set T"
   have in_space: "(?Z \<one>) \<subseteq> topspace T"
-    by (simp add: connected_component_of_subset_topspace)
+    using connected_component_of_subset_topspace by fastforce
   have "subgroup (?Z \<one>) G"
   proof (rule subgroupI)
-    show "(?Z \<one>) \<subseteq> carrier G" using in_space group_is_space by auto
+    show "(?Z \<one>) \<subseteq> carrier G" using in_space by auto
   next
     show "(?Z \<one>) \<noteq> {}"
       by (metis connected_component_of_eq_empty group_is_space one_closed)
@@ -247,7 +266,7 @@ next
 qed
 
 lemma group_prod_space [simp]: "topspace (prod_topology T T) = (carrier G) \<times> (carrier G)"
-  using topspace_prod_topology group_is_space by auto
+  by auto
 
 no_notation eq_closure_of ("closure'_of\<index>")
 
@@ -258,7 +277,7 @@ proof -
   have subset: "T closure_of H \<subseteq> carrier G"
     by (metis closedin_closure_of closedin_subset group_is_space)
   have nonempty: "T closure_of H \<noteq> {}"
-    by (simp add: assms closure_of_eq_empty group.subgroupE(1) group_is_space subgroupE(2))
+    by (simp add: assms closure_of_eq_empty group.subgroupE(1) subgroupE(2))
   
   let ?\<phi> = "\<lambda>(\<sigma>,\<tau>). \<sigma> \<otimes> inv \<tau>"
   have \<phi>_continuous: "continuous_map (prod_topology T T) T ?\<phi>"
@@ -272,7 +291,7 @@ proof -
   have "\<sigma> \<otimes> inv \<tau> \<in> T closure_of H" 
     if h\<sigma>\<tau>: "\<sigma> \<in> T closure_of H \<and> \<tau> \<in> T closure_of H" for \<sigma> \<tau>
   proof -
-    have in_space: "\<sigma> \<otimes> inv \<tau> \<in> topspace T" using group_is_space subset h\<sigma>\<tau> by fast
+    have in_space: "\<sigma> \<otimes> inv \<tau> \<in> topspace T" using subset h\<sigma>\<tau> by fast
     have "\<exists>\<eta> \<in> H. \<eta> \<in> U" if hU: "openin T U \<and> \<sigma> \<otimes> inv \<tau> \<in> U" for U
     proof -
       let ?V = "{x \<in> topspace (prod_topology T T). ?\<phi> x \<in> U}"
@@ -319,9 +338,9 @@ lemma topological_subgroup:
 proof -
   interpret subgroup H G by fact
   let ?\<H> = "(G \<lparr>carrier := H\<rparr>)" and ?T' = "subtopology T H"
-  have H_subspace: "topspace ?T' = H" using topspace_subtopology_subset group_is_space by force
+  have H_subspace: "topspace ?T' = H" using topspace_subtopology_subset by force
   have "continuous_map ?T' T (\<lambda>\<sigma>. inv \<sigma>)" using continuous_map_from_subtopology inv_continuous by blast
-  moreover have "(\<lambda>\<sigma>. inv \<sigma>) \<in> topspace ?T' \<rightarrow> H" unfolding Pi_def H_subspace using group_is_space by blast
+  moreover have "(\<lambda>\<sigma>. inv \<sigma>) \<in> topspace ?T' \<rightarrow> H" unfolding Pi_def H_subspace by blast
   ultimately have "continuous_map ?T' ?T' (\<lambda>\<sigma>. inv \<sigma>)" using continuous_map_into_subtopology by blast
   then have sub_inv_continuous: "continuous_map ?T' ?T' (\<lambda>\<sigma>. inv\<^bsub>?\<H>\<^esub> \<sigma>)"
     using continuous_map_eq H_subspace m_inv_consistent assms by fastforce
@@ -334,6 +353,8 @@ proof -
   then have "continuous_map (prod_topology ?T' ?T') ?T' (\<lambda>(\<sigma>,\<tau>). \<sigma> \<otimes>\<^bsub>?\<H>\<^esub> \<tau>)" by fastforce
   then show ?thesis unfolding topological_group_def topological_group_axioms_def using H_subspace sub_inv_continuous by auto
 qed
+
+text \<open>Topology on the set of cosets of some subgroup\<close>
 
 abbreviation coset_topology :: "'g set \<Rightarrow> 'g set topology" where
 "coset_topology H \<equiv> quot_topology T (r_coset G H)"
@@ -350,9 +371,8 @@ proof (unfold open_map_def, standard, standard)
   let ?\<pi> = "r_coset G H"
   let ?V = "{\<sigma> \<in> topspace T. ?\<pi> \<sigma> \<in> ?\<pi>`U}"
   have subsets: "H \<subseteq> carrier G \<and> U \<subseteq> carrier G"
-    using subgroup hU group_is_space openin_subset subgroupE(1) by auto
-  have "?V = {\<sigma> \<in> carrier G. \<exists>\<tau> \<in> U. H #> \<sigma> = H #> \<tau>}" 
-    using group_is_space image_def by blast 
+    using subgroup hU  openin_subset by (force elim!: subgroupE)
+  have "?V = {\<sigma> \<in> carrier G. \<exists>\<tau> \<in> U. H #> \<sigma> = H #> \<tau>}" using image_def by blast 
   then have "?V = {\<sigma> \<in> carrier G. \<exists>\<tau> \<in> U. \<sigma> \<in> H #> \<tau>}" using subsets 
     by (smt (verit) Collect_cong rcos_self repr_independence subgroup subset_eq)
   also have "... = (\<Union>\<eta> \<in> H. \<eta> <# U)" unfolding r_coset_def l_coset_def using subsets by auto
@@ -416,7 +436,7 @@ proof -
     then have "openin T ?W" using hU openin_continuous_map_preimage by blast
     then have "openin ?T' (?\<pi>`?W)" 
       using projection_open_map by (simp add: open_map_def subgroup_axioms)
-    moreover have "?V = ?\<pi>`?W" using \<pi>_inv quot_space group_is_space by force
+    moreover have "?V = ?\<pi>`?W" using \<pi>_inv quot_space by force
     ultimately show "openin ?T' ?V" by presburger
   qed
 
@@ -424,12 +444,21 @@ proof -
     using quot_group_quot_space quot_mul_continuous factorgroup_is_group by blast
 qed
 
+text \<open>
+  See \<^cite>\<open>"stackexchange_quot_groups"\<close> for our approach to proving that quotient groups
+  of topological groups are topological.
+\<close>
+
 abbreviation neighborhood :: "'g \<Rightarrow> 'g set \<Rightarrow> bool" where
 "neighborhood \<sigma> U \<equiv> openin T U \<and> \<sigma> \<in> U"
 
-(* This implies the other inclusion, so symmetric S \<longleftrightarrow> {inv \<sigma> | \<sigma>. \<sigma> \<in> S} = S *)
 abbreviation symmetric :: "'g set \<Rightarrow> bool" where
 "symmetric S \<equiv> {inv \<sigma> | \<sigma>. \<sigma> \<in> S} \<subseteq> S"
+
+text 
+  \<open>Note that this implies the other inclusion, so symmetric subsets are equal to their 
+  image under inversion.
+\<close>
 
 lemma neighborhoods_of_1:
   assumes "neighborhood \<one> U"
@@ -440,7 +469,7 @@ proof -
     let ?W = "{\<sigma> \<in> carrier G. inv \<sigma> \<in> U'}"
     let ?V = "?W \<inter> ((\<lambda>\<sigma>. inv \<sigma>)`?W)"
     have "neighborhood \<one> ?W" using openin_continuous_map_preimage[OF inv_continuous]
-        hU' group_is_space inv_one by fastforce
+        hU' inv_one by fastforce
     moreover from this have "neighborhood \<one> ((\<lambda>\<sigma>. inv \<sigma>)`?W)" using inverse_homeo 
         homeomorphic_imp_open_map inv_one image_eqI open_map_def by (metis (mono_tags, lifting))
     ultimately have neighborhood: "neighborhood \<one> ?V" by blast
@@ -453,7 +482,7 @@ proof -
   proof -
     let ?W = "{(\<sigma>,\<tau>) \<in> carrier G \<times> carrier G. \<sigma>\<otimes>\<tau> \<in> U'}"
     have preimage_mul: "?W = {x \<in> topspace (prod_topology T T). (\<lambda>(\<sigma>,\<tau>). \<sigma>\<otimes>\<tau>) x \<in> U'}"
-      using topspace_prod_topology group_is_space by fastforce
+      using topspace_prod_topology by fastforce
     then have "openin (prod_topology T T) ?W \<and> (\<one>,\<one>) \<in> ?W" 
       using openin_continuous_map_preimage[OF mul_continuous] hU' r_one by fastforce
     then obtain W\<^sub>1 W\<^sub>2 where hW\<^sub>1W\<^sub>2: "neighborhood \<one> W\<^sub>1 \<and> neighborhood \<one> W\<^sub>2 \<and> W\<^sub>1\<times>W\<^sub>2\<subseteq>?W"
@@ -490,7 +519,7 @@ proof (unfold Hausdorff_space_def, intro allI impI)
   let ?U = "topspace T - ((inv \<sigma>) <# (H #> \<tau>))"
   have "closedin T ((inv \<sigma>) <# (H #> \<tau>))" 
       using closed_set_translations closed_set_translations[OF H_closed] h\<sigma>\<tau> by simp
-  then have "neighborhood \<one> ?U" using \<open>\<one> \<notin> (inv \<sigma>) <# (H #> \<tau>)\<close> group_is_space by blast
+  then have "neighborhood \<one> ?U" using \<open>\<one> \<notin> (inv \<sigma>) <# (H #> \<tau>)\<close> by blast
   then obtain V where hV: "neighborhood \<one> V \<and> symmetric V \<and> V <#> V \<subseteq> ?U"
     using neighborhoods_of_1 by presburger
   let ?V\<^sub>1 = "\<sigma> <# V" and ?V\<^sub>2 = "\<tau> <# V"
@@ -500,7 +529,7 @@ proof (unfold Hausdorff_space_def, intro allI impI)
     then obtain \<upsilon>\<^sub>1 \<upsilon>\<^sub>2 where h\<upsilon>\<^sub>1\<upsilon>\<^sub>2: "\<upsilon>\<^sub>1 \<in> V \<and> \<upsilon>\<^sub>2 \<in> V \<and> ?\<pi> (\<sigma>\<otimes>\<upsilon>\<^sub>1) = ?\<pi> (\<tau>\<otimes>\<upsilon>\<^sub>2)" 
       unfolding l_coset_def by auto
     moreover then have \<upsilon>\<^sub>1\<upsilon>\<^sub>2_in_group: "\<upsilon>\<^sub>1 \<in> carrier G \<and> \<upsilon>\<^sub>2 \<in> carrier G" 
-      using hV group_is_space openin_subset by auto
+      using hV openin_subset by force
     ultimately have in_H: "(\<sigma>\<otimes>\<upsilon>\<^sub>1) \<otimes> inv (\<tau>\<otimes>\<upsilon>\<^sub>2) \<in> H" 
       using subgroup repr_independenceD rcos_module_imp h\<sigma>\<tau> m_closed 
       by (metis group.rcos_self is_group subgroup.m_closed subgroup_self)
@@ -533,7 +562,7 @@ proof -
   then have "closedin ?T' {H}" 
     using t1_space_closedin_singleton Hausdorff_imp_t1_space[OF Hausdorff] by fast
   then have preimage_closed: "closedin T {\<sigma> \<in> carrier G. H #> \<sigma> = H}" 
-    using projection_continuous closedin_continuous_map_preimage group_is_space by fastforce
+    using projection_continuous closedin_continuous_map_preimage by fastforce
   have "\<sigma> \<in> H \<longleftrightarrow> H #> \<sigma> = H" if "\<sigma> \<in> carrier G" for \<sigma>
     using coset_join1 coset_join2 subgroup that by metis
   then have "H = {\<sigma> \<in> carrier G. H #> \<sigma> = H}" using subset by auto
@@ -582,7 +611,9 @@ qed
 lemma open_set_in_carrier[elim]:
   assumes "openin T U"
   shows "U \<subseteq> carrier G"
-  using openin_subset group_is_space assms by auto
+  using openin_subset assms by force
+
+subsection \<open>Uniform structures\<close>
 
 abbreviation left_entourage :: "'g set \<Rightarrow> ('g \<times> 'g) set" where
 "left_entourage U \<equiv> {(\<sigma>,\<tau>) \<in> carrier G \<times> carrier G. inv \<sigma> \<otimes> \<tau> \<in> U}"
@@ -603,12 +634,12 @@ lemma
 proof -
   let ?\<Phi> = "\<lambda>E. E \<subseteq> carrier G \<times> carrier G \<and> (\<exists>U. neighborhood \<one> U \<and> left_entourage U \<subseteq> E)"
   have "?\<Phi> (carrier G \<times> carrier G)" 
-    using exI[where x="carrier G"] openin_topspace group_is_space by auto
+    using exI[where x="carrier G"] openin_topspace by force
   moreover have "Id_on (carrier G) \<subseteq> E \<and> ?\<Phi> (E\<inverse>) \<and> (\<exists>F. ?\<Phi> F \<and> F O F \<subseteq> E) \<and> 
     (\<forall>F. E \<subseteq> F \<and> F \<subseteq> carrier G \<times> carrier G \<longrightarrow> ?\<Phi> F)" if hE: "?\<Phi> E" for E
   proof -
     from hE obtain U where hU: "neighborhood \<one> U \<and> left_entourage U \<subseteq> E" by presburger
-    then have U_subset: "U \<subseteq> carrier G" using group_is_space openin_subset by auto
+    then have U_subset: "U \<subseteq> carrier G" using openin_subset by force
     from hU have "Id_on (carrier G) \<subseteq> E" by fastforce
     moreover have "?\<Phi> (E\<inverse>)"
     proof -
@@ -661,14 +692,14 @@ lemma
 proof -
   let ?\<Phi> = "\<lambda>E. E \<subseteq> carrier G \<times> carrier G \<and> (\<exists>U. neighborhood \<one> U \<and> right_entourage U \<subseteq> E)"
   have "?\<Phi> (carrier G \<times> carrier G)" 
-    using exI[where x="carrier G"] openin_topspace group_is_space by auto
+    using exI[where x="carrier G"] openin_topspace by force
   moreover have "Id_on (carrier G) \<subseteq> E \<and> ?\<Phi> (E\<inverse>) \<and> (\<exists>F. ?\<Phi> F \<and> F O F \<subseteq> E) \<and> 
     (\<forall>F. E \<subseteq> F \<and> F \<subseteq> carrier G \<times> carrier G \<longrightarrow> ?\<Phi> F)" if hE: "?\<Phi> E" for E
   proof -
     from hE obtain U where 
       hU: "neighborhood \<one> U \<and> right_entourage U \<subseteq> E"
       by presburger
-    then have U_subset: "U \<subseteq> carrier G" using group_is_space openin_subset by auto
+    then have U_subset: "U \<subseteq> carrier G" using openin_subset by force
     from hU have "Id_on (carrier G) \<subseteq> E" by fastforce
     moreover have "?\<Phi> (E\<inverse>)"
     proof -
@@ -742,7 +773,7 @@ proof -
       qed
       ultimately show ?thesis by blast
     qed
-    moreover have "U \<subseteq> uspace ?\<Phi>" using openin_subset U_open group_is_space by auto
+    moreover have "U \<subseteq> uspace ?\<Phi>" using openin_subset U_open by force
     ultimately show "openin ?T' U" unfolding openin_utopology by force
   next
     assume U_open: "openin ?T' U"
@@ -756,7 +787,7 @@ proof -
       let ?W = "{\<tau> \<in> carrier G. inv \<sigma> \<otimes> \<tau> \<in> V}"
       from hV have W_subset: "?W \<subseteq> E``{\<sigma>}" using in_group by fast
       have "continuous_map T T (\<lambda>\<tau>. inv \<sigma> \<otimes> \<tau>)" using translations_continuous in_group inv_closed by blast
-      then have "openin T ?W" using openin_continuous_map_preimage hV group_is_space by fastforce
+      then have "openin T ?W" using openin_continuous_map_preimage hV by fastforce
       then have "neighborhood \<sigma> ?W" using in_group r_inv hV by simp
       then show ?thesis using W_subset hE by fast
     qed
@@ -793,7 +824,7 @@ proof -
       qed
       ultimately show ?thesis by blast
     qed
-    moreover have "U \<subseteq> uspace ?\<Phi>" using openin_subset U_open group_is_space by auto
+    moreover have "U \<subseteq> uspace ?\<Phi>" using openin_subset U_open by force
     ultimately show "openin ?T' U" unfolding openin_utopology by force
   next
     assume U_open: "openin ?T' U"
@@ -809,7 +840,7 @@ proof -
       have "(\<lambda>\<tau>. \<sigma> \<otimes> inv \<tau>) = (\<lambda>\<tau>. \<sigma> \<otimes> \<tau>) \<circ> (\<lambda>\<tau>. inv \<tau>)" by fastforce
       then have "continuous_map T T (\<lambda>\<tau>. \<sigma> \<otimes> inv \<tau>)" using continuous_map_compose inv_continuous
           translations_continuous[OF in_group] by metis
-      then have "openin T ?W" using openin_continuous_map_preimage hV group_is_space by fastforce
+      then have "openin T ?W" using openin_continuous_map_preimage hV by fastforce
       then have "neighborhood \<sigma> ?W" using in_group r_inv hV by simp
       then show ?thesis using W_subset hE by fast
     qed
@@ -870,6 +901,9 @@ next
     unfolding ucontinuous_def by fast
 qed
 
+subsection \<open>The Birkhoff-Kakutani theorem\<close>
+subsubsection \<open>Prenorms on groups\<close>
+
 definition group_prenorm :: "('g \<Rightarrow> real) \<Rightarrow> bool" where
 "group_prenorm N \<longleftrightarrow>
   N \<one> = 0 \<and>
@@ -878,7 +912,7 @@ definition group_prenorm :: "('g \<Rightarrow> real) \<Rightarrow> bool" where
 
 lemma group_prenorm_clauses[elim]:
   assumes "group_prenorm N"
-  shows 
+  obtains 
     "N \<one> = 0" and 
     "\<And>\<sigma> \<tau>. \<sigma> \<in> carrier G \<Longrightarrow> \<tau> \<in> carrier G \<Longrightarrow> N (\<sigma> \<otimes> \<tau>) \<le> N \<sigma> + N \<tau>" and 
     "\<And>\<sigma>. \<sigma> \<in> carrier G \<Longrightarrow> N (inv \<sigma>) = N \<sigma>"
@@ -970,8 +1004,8 @@ lemma neighborhood_1_translation:
   assumes "neighborhood \<one> U" and "\<sigma> \<in> carrier G \<or> \<sigma> \<in> topspace T"
   shows "neighborhood \<sigma> (\<sigma> <# U)"
 proof -
-  have "openin T (\<sigma> <# U)" using assms open_set_translations(1) group_is_space by simp
-  then show ?thesis unfolding l_coset_def using assms r_one group_is_space by force
+  have "openin T (\<sigma> <# U)" using assms open_set_translations(1) by simp
+  then show ?thesis unfolding l_coset_def using assms r_one by force
 qed
            
 proposition group_prenorm_continuous_if_continuous_at_1:
@@ -986,12 +1020,12 @@ proof -
     then have "neighborhood \<sigma> (\<sigma> <# U)" using h\<sigma> neighborhood_1_translation by blast
     moreover have "N (\<sigma> \<otimes> \<tau>) \<in> Met_TC.mball (N \<sigma>) \<epsilon>" if "\<tau> \<in> U" for \<tau>
     proof -
-      have in_group: "\<sigma> \<in> carrier G \<and> \<tau> \<in> carrier G" using h\<sigma> group_is_space that openin_subset hU by blast
+      have in_group: "\<sigma> \<in> carrier G \<and> \<tau> \<in> carrier G" using h\<sigma> that openin_subset hU by blast
       then have "(inv \<sigma>) \<otimes> (\<sigma> \<otimes> \<tau>) = \<tau>" using l_inv l_one m_assoc inv_closed by metis
       then have "\<bar>N (inv \<sigma>) - N (inv (\<sigma> \<otimes> \<tau>))\<bar> \<le> N \<tau>" using group_prenorm_reverse_triangle_ineq 
           in_group inv_closed m_closed by (metis inv_inv prenorm)
       then have "\<bar>N \<sigma> - N (\<sigma> \<otimes> \<tau>)\<bar> < \<epsilon>" 
-        using prenorm group_prenorm_clauses in_group m_closed inv_closed hU that by fastforce
+        using prenorm in_group m_closed inv_closed hU that by fastforce
       then show ?thesis unfolding Met_TC.mball_def dist_real_def by fast
     qed
     ultimately show ?thesis unfolding l_coset_def by blast
@@ -999,6 +1033,8 @@ proof -
   then show ?thesis using Metric_space.continuous_map_to_metric
     by (metis Met_TC.Metric_space_axioms mtopology_is_euclidean)
 qed
+
+subsubsection \<open>A prenorm respecting the group topology\<close>
 
 context
   fixes U :: "nat \<Rightarrow> 'g set"
@@ -1227,6 +1263,8 @@ proof -
 qed
 end
 
+subsubsection \<open>Proof of Birkhoff-Kakutani\<close>
+
 lemma first_countable_neighborhoods_of_1_sequence:
   assumes "first_countable T"
   shows "\<exists>U :: nat \<Rightarrow> 'g set. 
@@ -1235,10 +1273,10 @@ lemma first_countable_neighborhoods_of_1_sequence:
 proof -
   from assms obtain \<B> where h\<B>: 
     "countable \<B> \<and> (\<forall>W\<in>\<B>. openin T W) \<and> (\<forall>U. neighborhood \<one> U \<longrightarrow> (\<exists>W\<in>\<B>. \<one> \<in> W \<and> W \<subseteq> U))"
-    unfolding first_countable_def using group_is_space by fastforce
+    unfolding first_countable_def by fastforce
   define \<BB> :: "'g set set" where "\<BB> = insert (carrier G) {W \<in> \<B>. \<one> \<in> W}"
   define B :: "nat \<Rightarrow> 'g set" where "B = from_nat_into \<BB>"
-  have "\<BB> \<noteq> {} \<and> (\<forall>W\<in>\<BB>. neighborhood \<one> W)" unfolding \<BB>_def using h\<B> group_is_space
+  have "\<BB> \<noteq> {} \<and> (\<forall>W\<in>\<BB>. neighborhood \<one> W)" unfolding \<BB>_def using h\<B>
     by (metis insertE insert_not_empty mem_Collect_eq one_closed openin_topspace)
   then have B_neighborhood: "\<forall>n. neighborhood \<one> (B n)" unfolding B_def by (simp add: from_nat_into)
   define P where "P n V \<longleftrightarrow> V \<subseteq> B n \<and> neighborhood \<one> V \<and> symmetric V" for n V
@@ -1316,14 +1354,14 @@ proof -
   moreover have "?\<Delta> \<sigma> \<tau> = ?\<Delta> \<tau> \<sigma>" if "\<sigma> \<in> carrier G \<and> \<tau> \<in> carrier G" for \<sigma> \<tau>
   proof -
     have "inv \<tau> \<otimes> \<sigma> = inv (inv \<sigma> \<otimes> \<tau>)" using inv_mult_group inv_inv that by auto
-    then show ?thesis using prenorm that group_prenorm_clauses(3) by fastforce
+    then show ?thesis using prenorm that by fastforce
   qed
   moreover have "?\<Delta> \<sigma> \<tau> = 0 \<longleftrightarrow> \<sigma> = \<tau>" if "\<sigma> \<in> carrier G \<and> \<tau> \<in> carrier G" for \<sigma> \<tau>
   proof
     assume "?\<Delta> \<sigma> \<tau> = 0"
     then have "inv \<sigma> \<otimes> \<tau> \<in> U n" for n using norm_ball_in_U that by fastforce
     then have "inv \<sigma> \<otimes> \<tau> \<in> W" if "neighborhood \<one> W" for W using neighborhood_base that by auto
-    then have "inv \<sigma> \<otimes> \<tau> = \<one>" using Hausdorff_space_sing_Inter_opens[of T \<one>] Hausdorff group_is_space by blast
+    then have "inv \<sigma> \<otimes> \<tau> = \<one>" using Hausdorff_space_sing_Inter_opens[of T \<one>] Hausdorff by blast
     then show "\<sigma> = \<tau>" using inv_comm inv_equality that by fastforce
   next
     assume "\<sigma> = \<tau>"
@@ -1374,7 +1412,7 @@ proof -
   proof -
     from that obtain \<sigma> \<epsilon> where "\<sigma> \<in> carrier G \<and> V = \<sigma> <# ?B \<epsilon>" 
       unfolding ball_def using mball_coset_of_norm_ball by blast
-    moreover have "openin T (?B \<epsilon>)" using continuous group_is_space
+    moreover have "openin T (?B \<epsilon>)" using continuous
       by (simp add: continuous_map_upper_lower_semicontinuous_lt)
     ultimately show ?thesis using open_set_translations(1) by presburger
   qed
@@ -1424,14 +1462,14 @@ proof -
   moreover have "?\<Delta> \<sigma> \<tau> = ?\<Delta> \<tau> \<sigma>" if "\<sigma> \<in> carrier G \<and> \<tau> \<in> carrier G" for \<sigma> \<tau>
   proof -
     have "\<tau> \<otimes> inv \<sigma> = inv (\<sigma> \<otimes> inv \<tau>)" using inv_mult_group inv_inv that by auto
-    then show ?thesis using prenorm that group_prenorm_clauses(3) by fastforce
+    then show ?thesis using prenorm that by auto 
   qed
   moreover have "?\<Delta> \<sigma> \<tau> = 0 \<longleftrightarrow> \<sigma> = \<tau>" if "\<sigma> \<in> carrier G \<and> \<tau> \<in> carrier G" for \<sigma> \<tau>
   proof
     assume "?\<Delta> \<sigma> \<tau> = 0"
     then have "\<sigma> \<otimes> inv \<tau> \<in> U n" for n using norm_ball_in_U that by fastforce
     then have "\<sigma> \<otimes> inv \<tau> \<in> W" if "neighborhood \<one> W" for W using neighborhood_base that by auto
-    then have "\<sigma> \<otimes> inv \<tau> = \<one>" using Hausdorff_space_sing_Inter_opens[of T \<one>] Hausdorff group_is_space by blast
+    then have "\<sigma> \<otimes> inv \<tau> = \<one>" using Hausdorff_space_sing_Inter_opens[of T \<one>] Hausdorff by blast
     then show "\<sigma> = \<tau>" using inv_equality that by fastforce
   next
     assume "\<sigma> = \<tau>"
@@ -1459,7 +1497,7 @@ proof -
       have "\<tau> \<in> (?B \<epsilon>) #> \<sigma>" if "\<tau> \<in> carrier G \<and> N (\<sigma> \<otimes> inv \<tau>) < \<epsilon>" for \<tau>
       proof -
         have "inv (\<sigma> \<otimes> inv \<tau>) \<otimes> \<sigma> = \<tau>" using h\<sigma> that by (simp add: inv_mult_group m_assoc)
-        moreover have "inv (\<sigma> \<otimes> inv \<tau>) \<in> ?B \<epsilon>" using h\<sigma> that prenorm group_prenorm_clauses(3) by fastforce
+        moreover have "inv (\<sigma> \<otimes> inv \<tau>) \<in> ?B \<epsilon>" using h\<sigma> that prenorm by fastforce
         ultimately show ?thesis unfolding r_coset_def by force
       qed
       moreover have "\<tau> \<in> carrier G \<and> N (\<sigma> \<otimes> inv \<tau>) < \<epsilon>" if "\<tau> \<in> (?B \<epsilon>) #> \<sigma>" for \<tau>
@@ -1467,7 +1505,7 @@ proof -
         from that obtain \<rho> where "\<rho> \<in> ?B \<epsilon> \<and> \<tau> = \<rho> \<otimes> \<sigma>" unfolding r_coset_def by blast
         moreover from this have "\<sigma> \<otimes> inv \<tau> = inv \<rho>" using h\<sigma>
           by (metis (no_types, lifting) inv_closed inv_mult_group inv_solve_left m_closed mem_Collect_eq)
-        ultimately show ?thesis using h\<sigma> prenorm group_prenorm_clauses(3) by fastforce
+        ultimately show ?thesis using h\<sigma> prenorm by fastforce
       qed
       ultimately show ?thesis by blast
     qed
@@ -1483,7 +1521,7 @@ proof -
   proof -
     from that obtain \<sigma> \<epsilon> where "\<sigma> \<in> carrier G \<and> V = ?B \<epsilon> #> \<sigma>" 
       unfolding ball_def using mball_coset_of_norm_ball by blast
-    moreover have "openin T (?B \<epsilon>)" using continuous group_is_space
+    moreover have "openin T (?B \<epsilon>)" using continuous
       by (simp add: continuous_map_upper_lower_semicontinuous_lt)
     ultimately show ?thesis using open_set_translations(2) by presburger
   qed

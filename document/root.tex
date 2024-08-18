@@ -1,0 +1,39 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{isabelle,isabellesym}
+
+% this should be the last package used
+\usepackage{pdfsetup}
+
+% urls in roman style, theory text in math-similar italics
+\urlstyle{rm}
+\isabellestyle{it}
+
+
+\begin{document}
+
+\title{Topological Groups}
+\author{Niklas Krofta}
+\maketitle
+
+\begin{abstract}
+Topological groups are blends of groups and topological spaces with the property that the multiplication and inversion operations are continuous functions. 
+They frequently occur in mathematics and physics, e.g. in the form of Lie groups. We formalize the theory of topological groups on top of 
+HOL-Algebra and HOL-Analysis. Topological groups are defined via a locale. We also introduce a set-based notion of uniform spaces in order to define
+the uniform structures of topological groups. The most notable formalized result is the Birkhoff-Kakutani theorem which characterizes 
+metrizable topological groups. Our formalization also defines the important matrix groups $\text{GL}_n(\mathbb{R})$, $\text{SL}_n(\mathbb{R})$,
+$\text{O}_n$, $\text{SO}_n$ and proves them to be topological groups. \newline
+
+The formalized results and proofs have been taken from the textbooks of Arhangel’skii and Tkachenko \cite{topological_groups}, Bump \cite{lie_groups}
+and James \cite{topological_and_uniform_spaces}. These lecture notes \cite{prem} have also been helpful.
+\end{abstract}
+
+\tableofcontents
+
+% include generated text of all theories
+\input{session}
+
+\bibliographystyle{abbrv}
+\bibliography{root}
+
+\end{document}

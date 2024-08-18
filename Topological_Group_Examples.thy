@@ -1,6 +1,11 @@
+\<^marker>\<open>creator "Niklas Krofta"\<close>
+section \<open>Examples of Topological Groups\<close>
 theory Topological_Group_Examples
   imports Topological_Group
 begin
+
+paragraph \<open>Summary\<close>
+text \<open>This section gives examples of topological groups.\<close>
 
 lemma (in group) discrete_topological_group:
   shows "topological_group G (discrete_topology (carrier G))"
