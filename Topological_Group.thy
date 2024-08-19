@@ -1277,7 +1277,7 @@ proof -
   define \<BB> :: "'g set set" where "\<BB> = insert (carrier G) {W \<in> \<B>. \<one> \<in> W}"
   define B :: "nat \<Rightarrow> 'g set" where "B = from_nat_into \<BB>"
   have "\<BB> \<noteq> {} \<and> (\<forall>W\<in>\<BB>. neighborhood \<one> W)" unfolding \<BB>_def using h\<B>
-    by (metis insertE insert_not_empty mem_Collect_eq one_closed openin_topspace)
+    by (metis group_is_space insert_iff insert_not_empty mem_Collect_eq one_closed openin_topspace)
   then have B_neighborhood: "\<forall>n. neighborhood \<one> (B n)" unfolding B_def by (simp add: from_nat_into)
   define P where "P n V \<longleftrightarrow> V \<subseteq> B n \<and> neighborhood \<one> V \<and> symmetric V" for n V
   define Q where "Q (n :: nat) V W \<longleftrightarrow> W <#> W \<subseteq> V" for n V W

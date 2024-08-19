@@ -159,7 +159,7 @@ next
     have "?F``{x} = {y \<in> uspace \<Phi>. f y \<in> E``{f x}}" unfolding Image_def using hx by auto
     then have "?F``{x} \<subseteq> ?V" using hE by auto
     moreover have "entourage_in \<Phi> ?F" 
-      using assms entourage_preimage_ucontinuous hE unfolding topspace_utopology by fast
+      using assms entourage_preimage_ucontinuous hE unfolding topspace_utopology by blast
     ultimately show ?thesis by blast
   qed
   then show "openin (utopology \<Phi>) ?V" unfolding openin_utopology by force
